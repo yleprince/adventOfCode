@@ -34,7 +34,7 @@ def digit_str_to_int(digit_str):
 
 
 def extract_digits2(line):
-    extracted_digits = re.findall(r"\d|" + "|".join(DIGITS_STR), line)
+    extracted_digits = re.findall(f"(?=(\d|{'|'.join(DIGITS_STR)}))", line)
     useful_digits = [extracted_digits[0], extracted_digits[-1]]
     return [digit_str_to_int(d) for d in useful_digits]
 
