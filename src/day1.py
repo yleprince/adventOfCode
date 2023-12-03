@@ -2,15 +2,8 @@
 
 import re
 
-import requests
-
-from constants import COOKIES, DIGITS_STR
-
-
-def get_input_lines(dayNumber):
-    url = "https://adventofcode.com/2023/day/" + str(dayNumber) + "/input"
-    r = requests.get(url, cookies=COOKIES)
-    return r.text.splitlines()
+from utils.constants import DIGITS_STR
+from utils.utils import get_input_lines
 
 
 def extract_digits1(line):
