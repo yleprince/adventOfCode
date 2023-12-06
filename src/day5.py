@@ -1,6 +1,7 @@
 # Description Advent of Code day 5
 
 from utils.utils import get_input_lines
+import os
 
 
 def parse_seeds1(first_line):
@@ -127,26 +128,62 @@ def merge_maps(maps):
         maps = [merged] + maps
     return maps
 
+def write_locations(locations, seed):
+    with open("/tmp/locations.txt", "a") as f:
+        f.write(f"{seed}: {locations}\n")
+    print("wrote locations for seed ", seed)
+
+def load_locations():
+    if not os.path.exists("/tmp/locations.txt"):
+        return {}
+    with open("/tmp/locations.txt", "r") as f:
+        lines = f.readlines()
+    return {int(l.split(": ")[0]): eval(l.split(": ")[1]) for l in lines}
+
+
+
 
 def puzzle2(lines):
     seeds = parse_seeds2(lines[0])
     maps = parse_maps(lines[1:])
-    converted_maps = [convert_map_format(m) for m in maps]
-    print()
-    print(converted_maps)
-    print()
-    first, second = converted_maps[0], converted_maps[1]
-    print("first", first)
-    print("second", second)
-    print()
-    result = merge_two_maps(first, second)
-    result = sorted(list(result))
-    print(result)
-    print()
+
+    already_computed_seed = load_locations().keys()
+
+    for seed, seed_range in seeds.items():
+        if seed in already_computed_seed:
+            continue
+        else:
+            print("seed", seed)
+            locations = set()
+            for i, s in enumerate(range(seed, seed + seed_range)):
+                print(f"step: {i} / {seed_range}", end="\r")
+                location = traverse_map(maps, s)
+                locations.add(location)
+            write_locations(locations, seed)
+
+    return min(traverse_map(maps, seed) for seed in seeds)
+
+
+
+#def puzzle2(lines):
+#    seeds = parse_seeds2(lines[0])
+#    maps = parse_maps(lines[1:])
+#    converted_maps = [convert_map_format(m) for m in maps]
+#    print()
+#    print(converted_maps)
+#    print()
+#    first, second = converted_maps[0], converted_maps[1]
+#    print("first", first)
+#    print("second", second)
+#    print()
+#    result = merge_two_maps(first, second)
+#    result = sorted(list(result))
+#    print(result)
+#    print()
 
     #    merged_maps = merge_maps(converted_maps)
 
-    return 0
+#    return 0
 
 
 if __name__ == "__main__":
@@ -199,8 +236,10 @@ if __name__ == "__main__":
     #    print()
 
     # Puzzle 2
+    print()
     second_example = puzzle2(example)
     print("Example 2: " + str(second_example))
-#
-#    second_result = puzzle2(lines)
-#    print("Puzzle 2: " + str(second_result))
+
+
+    second_result = puzzle2(lines)
+    print("Puzzle 2: " + str(second_result))
