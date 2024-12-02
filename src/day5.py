@@ -1,10 +1,11 @@
 # Description Advent of Code day 5
 
 from utils.utils import get_input_lines
+from typing import List
 import os
 
 
-def parse_seeds1(first_line):
+def parse_seeds(first_line):
     seeds_raw = first_line.split(": ")[1]
     return [int(x) for x in seeds_raw.split(" ")]
 
@@ -38,7 +39,7 @@ def traverse_map(maps, seed):
 
 
 def puzzle1(lines):
-    seeds = parse_seeds1(lines[0])
+    seeds = parse_seeds(lines[0])
     maps = parse_maps(lines[1:])
     return min(traverse_map(maps, seed) for seed in seeds)
 
@@ -47,144 +48,62 @@ def puzzle1(lines):
 # Puzzle 2
 # ------------------------------
 
+class Range:
+    def __init__(self, start, end):
+        self.start = start
+        self.end = end
 
-def parse_seeds2(first_line):
-    seeds_raw = first_line.split(": ")[1].split(" ")
-    seeds = [int(s) for s in seeds_raw]
-    return {seeds[i]: seeds[i + 1] for i in range(0, len(seeds), 2)}
+    def __str__(self):
+        return f"[{self.start}, {self.end})"
 
+def traverse_map_with_ranges(map, ranges:List[Range]):
+    result = []
+    for dest, src, size in map:
+        src_end = src + size
+        new_ranges = []
+        while ranges:
+            # [start                                 end)
+            #           [src        src_end)
+            # [ BEFORE ][ INSIDE           ][ AFTER ]
+            start, end = ranges.pop()
+            before = Range(start, min(end, src))
+            inside = Range(max(start, src), min(end, src_end))
+            after = Range(max(src_end, start), end)
 
-def convert_map_format(map):
-    return [(s, s + r, d - s) for d, s, r in map]
-
-
-def clean_map(map):
-    return [(s, e, r) for s, e, r in map if s != e]
-
-
-def merge_two_maps(first, second):
-    merged = set()
-    print("merged", merged)
-    for s1, e1, r1 in first:
-        print("\ts1, e1, r1", s1, e1, r1)
-        for s2, e2, r2 in second:
-            print("\t\ts2, e2, r2", s2, e2, r2)
-            if e1 + r1 < s2 or s1 + r1 >= e2:  # A and E
-                print("\t\tA or E")
-                merged.add((s1, e1, r1))
-                merged.add((s2, e2, r2))
-
-            elif s1 + r1 >= s2 and e1 + r1 <= e2:  # F
-                print("\t\tF")
-                merged.add((s2, s1 + r1, r2))
-                merged.add((e1 + r1, e2, r2))
-                merged.add((s1, e1, r1 + r2))
-
-            elif s1 + r1 < s2 and e1 + r1 >= e2:  # C
-                print("\t\tC")
-                merged.add((s2, e2, r2 + r1))
-                merged.add((s1, s2 - r1, r1))
-                merged.add((s2 - r1, e1, r1))
-
-            elif s1 + r1 < s2 and s2 <= e1 + r1 <= e2:  # B
-                print("\t\tB")
-                merged.add((s1, s2 - r1, r1))
-                merged.add((s2 - r1, e1, r1 + r2))
-                merged.add((s2, e2, r2))
-
-            elif s2 <= s1 + r1 < e2 and e1 + r1 >= e2:  # D
-                print("\t\tD")
-                merged.add((s2, s1 + r1, r2))
-                merged.add((e2, e1 + r1, r1))
-                merged.add((s1 + r1, e2, r1 + r2))
-            display = sorted(clean_map(list(merged)))
-            print("merged", display)
-            print()
-    return merged
+            if before.start < before.end:
+                new_ranges.append(before)
+            if inside.start < inside.end:
+                result.append(Range(inside.start - src + dest, inside.end - src + dest))
+            if after.start < after.end:
+                new_ranges.append(after)
+        ranges = new_ranges
+    return result + ranges
 
 
-# def merge_two_maps2(first, second):
-#    merged = list()
-#    for s1, e1, r1 in first:
-#        S1, E1 = s1 + r1, e1 + r1
-#        for s2, e2, r2 in second:
+def traverse_maps_with_ranges(maps, ranges:List[Range]):
+    final_ranges = []
+    for map in maps:
+        final_ranges.extend(traverse_map_with_ranges(map, ranges))
+    print(final_ranges)
+    return min(r.start for r in final_ranges)
 
-#            elif s1 + r1 < s2 and s2 <= e1 + r1 < e2:
-#                bound = e1 + r1 - s2
-#                merged.add((s1, bound, r1))
-#                merged.add((bound, e1, r1 + r2))
-#                merged.add((e1, e2, r2))
-#            elif s1 + r1 >= s2 and e1 + r1 >= e2:
-#                merged.add((s1, e1 + r1 - e2, r1 + r2))
-#                merged.add((e1 + r1 - e2, e1, r1))
-#                merged.add((s2, e1 + r1 - e2, r2))
-
-
-def merge_maps(maps):
-    while len(maps) > 1:
-        first = maps.pop(0)
-        second = maps.pop(0)
-        merged = merge_two_maps(first, second)
-        maps = [merged] + maps
-    return maps
-
-def write_locations(locations, seed):
-    with open("/tmp/locations.txt", "a") as f:
-        f.write(f"{seed}: {locations}\n")
-    print("wrote locations for seed ", seed)
-
-def load_locations():
-    if not os.path.exists("/tmp/locations.txt"):
-        return {}
-    with open("/tmp/locations.txt", "r") as f:
-        lines = f.readlines()
-    return {int(l.split(": ")[0]): eval(l.split(": ")[1]) for l in lines}
-
-
+        
+        
 
 
 def puzzle2(lines):
-    seeds = parse_seeds2(lines[0])
+    seeds = parse_seeds(lines[0])
+    ranges = [Range(start, start + size) for start, size in zip(seeds[::2], seeds[1::2])]
     maps = parse_maps(lines[1:])
 
-    already_computed_seed = load_locations().keys()
-
-    for seed, seed_range in seeds.items():
-        if seed in already_computed_seed:
-            continue
-        else:
-            print("seed", seed)
-            locations = set()
-            for i, s in enumerate(range(seed, seed + seed_range)):
-                print(f"step: {i} / {seed_range}", end="\r")
-                location = traverse_map(maps, s)
-                locations.add(location)
-            write_locations(locations, seed)
-
-    return min(traverse_map(maps, seed) for seed in seeds)
+    for r in ranges:
+        traverse_maps_with_ranges(maps, [r])
 
 
 
-#def puzzle2(lines):
-#    seeds = parse_seeds2(lines[0])
-#    maps = parse_maps(lines[1:])
-#    converted_maps = [convert_map_format(m) for m in maps]
-#    print()
-#    print(converted_maps)
-#    print()
-#    first, second = converted_maps[0], converted_maps[1]
-#    print("first", first)
-#    print("second", second)
-#    print()
-#    result = merge_two_maps(first, second)
-#    result = sorted(list(result))
-#    print(result)
-#    print()
-
-    #    merged_maps = merge_maps(converted_maps)
-
-#    return 0
-
+    
+    
+    return 0
 
 if __name__ == "__main__":
     dayNumber = 5
@@ -230,16 +149,12 @@ if __name__ == "__main__":
     # Puzzle 1
     first_example = puzzle1(example)
     print("Example 1: " + str(first_example))
-
-    #    first_result = puzzle1(lines)
-    #    print("Puzzle 1: " + str(first_result))
-    #    print()
+    first_puzzle = puzzle1(lines)
+    print("Puzzle 1: " + str(first_puzzle))
+    print()
 
     # Puzzle 2
-    print()
     second_example = puzzle2(example)
     print("Example 2: " + str(second_example))
 
 
-    second_result = puzzle2(lines)
-    print("Puzzle 2: " + str(second_result))
